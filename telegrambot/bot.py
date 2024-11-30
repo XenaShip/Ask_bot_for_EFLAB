@@ -46,9 +46,9 @@ async def get_message(message: Message):
         button1 = 'Готов'
         button2 = 'Нет, спасибо, позже'
         menu = ReplyKeyboardMarkup(resize_keyboard=True).add(button1, button2)
-        await bot.send_message(chat_id=my_chat, text=my_text, reply_markup=menu)
+        await bot.send_message(chat_id=message.chat.id, text=my_text, reply_markup=menu)
     except Client.DoesNotExist:
-        await bot.send_message(chat_id=my_chat, text="Мы с вами не знакомы! Напишите команду /me", reply_markup=ReplyKeyboardRemove())
+        await bot.send_message(chat_id=message.chat.id, text="Мы с вами не знакомы! Напишите команду /me", reply_markup=ReplyKeyboardRemove())
         await start(message)
         return
 
