@@ -6,6 +6,7 @@ from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from rest_framework.status import is_client_error
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rest.settings')
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -34,12 +35,17 @@ class UserForm(StatesGroup):
 class QuestionForm(StatesGroup):
     waiting_for_answer = State()
 
+is_client_created = False
 
 @dp.message_handler(commands=['start'])
 async def get_message(message: Message):
+    global is_client_created
     my_chat = message.chat.id
-    hello_text = 'Привет! Это бот Лаборатории Эффективности'
-    await bot.send_message(chat_id=message.chat.id, text=hello_text)
+    if Survey.objects.filter(active=True).exists():
+        now_survey = Survey.objects.get(active=True)
+        hello_text = now_survey.hello_text
+    if not is_client_created:
+        await bot.send_message(chat_id=message.chat.id, text=hello_text)
     try:
         now_client = Client.objects.get(acc_tg=message.from_user.username)
         my_text = 'Готов пройти опрос?'
@@ -47,7 +53,9 @@ async def get_message(message: Message):
         button2 = 'Нет, спасибо, позже'
         menu = ReplyKeyboardMarkup(resize_keyboard=True).add(button1, button2)
         await bot.send_message(chat_id=message.chat.id, text=my_text, reply_markup=menu)
+        is_client_created = False
     except Client.DoesNotExist:
+        is_client_created = True
         await bot.send_message(chat_id=message.chat.id, text="Мы не знакомы, познакомимся?", reply_markup=ReplyKeyboardRemove())
         await start(message)
         return
@@ -103,10 +111,11 @@ async def handle_answer(message: Message, state: FSMContext):
 
     if now_question:
         Answer.objects.create(
-            client=now_client,
+            client_tg_acc=message.from_user.username,
             que=now_question,
             ans=message.text,
-            date=datetime.now()
+            date=datetime.now(),
+            client_id=now_client
         )
         await state.update_data(current_question=current_question + 1)
         await ask_survey(message, state)
@@ -147,8 +156,11 @@ async def process_email(message: Message, state: FSMContext):
         acc_tg=message.from_user.username,
         phone=user_data.get("phone"),
         email=email,
+        tg_id=message.from_user.id
     )
-    await message.answer("Спасибо! Вы зарегистрированы. Теперь введите /start для начала опроса.")
+    start_botton = ReplyKeyboardMarkup(resize_keyboard=True).add('/start')
+    await bot.send_message(chat_id=message.chat.id, text="Спасибо! Вы зарегистрированы. Теперь введите /start для начала опроса."
+                           , reply_markup=start_botton)
     await state.finish()
 
 

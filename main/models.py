@@ -11,6 +11,7 @@ class Survey(models.Model):
     description = models.TextField(verbose_name='описание опроса')
     active = models.BooleanField(verbose_name='активность опроса')
     counting = models.IntegerField(verbose_name='кол-во вопросов в опросе', **NULLABLE)
+    hello_text = models.TextField(verbose_name='приветственный текст', **NULLABLE)
 
     def __str__(self):
         # Строковое отображение объекта
@@ -24,7 +25,7 @@ class Survey(models.Model):
 class Question(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name='опрос')
     numb = models.IntegerField(verbose_name='номер вопроса')
-    que_text = models.TextField(verbose_name='текст опроса', **NULLABLE)
+    que_text = models.TextField(verbose_name='текст вопроса', **NULLABLE)
 
     def __str__(self):
         return f'{self.survey}, {self.numb}'
@@ -50,19 +51,15 @@ class Client(models.Model):
 
 
 class Answer(models.Model):
-    client = models.CharField(max_length=100, verbose_name='ТГ аккаунт')
+    client_tg_acc = models.CharField(max_length=100, verbose_name='ТГ аккаунт')
     que = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name='вопрос')
     ans = models.TextField(verbose_name='ответ')
     date = models.DateTimeField(auto_now_add=True, verbose_name='время ответа')
+    client_id = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name='id клиента', **NULLABLE)
 
     def __str__(self):
-        return f'{self.client}'
+        return f'{self.client_tg_acc}'
 
-    def save(self, *args, **kwargs):
-        # Изменяем поле client на значение из поля name модели Client
-        if isinstance(self.client, Client):  # Проверяем, что поле client содержит объект Client
-            self.client = self.client.acc_tg  # Устанавливаем значение поля name вместо объекта
-        super().save(*args, **kwargs)  # Вызов стандартного метода save
 
     class Meta:
         verbose_name = 'ответ'

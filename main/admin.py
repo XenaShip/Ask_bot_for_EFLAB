@@ -5,9 +5,9 @@ from .models import Survey, Question, Answer, Client
 
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
-    list_display = ('que', 'client', 'ans', 'date')
-    list_filter = ('que', 'client', 'ans', 'date')
-    search_fields = ('que', 'client', 'ans', 'date')
+    list_display = ('que', 'ans', 'date')
+    list_filter = ('que', 'ans', 'date')
+    search_fields = ('que', 'ans', 'date')
 
 
 @admin.register(Client)
@@ -19,9 +19,9 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('survey', 'numb',)
-    list_filter = ('survey', 'numb',)
-    search_fields = ('survey', 'numb',)
+    list_display = ('survey', 'numb', 'que_text')
+    list_filter = ('survey', 'numb', 'que_text')
+    search_fields = ('survey', 'numb', 'que_text')
 
 
 @admin.register(Survey)
