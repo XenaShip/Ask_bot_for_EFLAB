@@ -10,7 +10,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rest.settings')
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-from main.models import Survey, Question, QueText, Client, Answer
+from main.models import Survey, Question, Client, Answer
 
 from aiogram.types import ReplyKeyboardMarkup
 
@@ -37,18 +37,18 @@ class QuestionForm(StatesGroup):
 
 @dp.message_handler(commands=['start'])
 async def get_message(message: Message):
-    username_in_chat = message.from_user.username
-    print(username_in_chat)
+    my_chat = message.chat.id
+    hello_text = 'Привет! Это бот Лаборатории Эффективности'
+    await bot.send_message(chat_id=message.chat.id, text=hello_text)
     try:
         now_client = Client.objects.get(acc_tg=message.from_user.username)
-        my_chat = message.chat.id
         my_text = 'Готов пройти опрос?'
         button1 = 'Готов'
         button2 = 'Нет, спасибо, позже'
         menu = ReplyKeyboardMarkup(resize_keyboard=True).add(button1, button2)
         await bot.send_message(chat_id=message.chat.id, text=my_text, reply_markup=menu)
     except Client.DoesNotExist:
-        await bot.send_message(chat_id=message.chat.id, text="Мы с вами не знакомы! Напишите команду /me", reply_markup=ReplyKeyboardRemove())
+        await bot.send_message(chat_id=message.chat.id, text="Мы не знакомы, познакомимся?", reply_markup=ReplyKeyboardRemove())
         await start(message)
         return
 
@@ -79,9 +79,9 @@ async def ask_survey(message: Message, state: FSMContext):
 
     now_question = Question.objects.filter(survey=now_survey, numb=current_question).first()
     if now_question:
-        que_text = QueText.objects.filter(que=now_question).first()
+        que_text = now_question.que_text
         if que_text:
-            await bot.send_message(chat_id=message.chat.id, text=que_text.your_text, reply_markup=ReplyKeyboardRemove())
+            await bot.send_message(chat_id=message.chat.id, text=que_text, reply_markup=ReplyKeyboardRemove())
             await QuestionForm.waiting_for_answer.set()
         else:
             await message.answer("Ошибка: текст вопроса отсутствует.")
@@ -115,9 +115,11 @@ async def handle_answer(message: Message, state: FSMContext):
         await state.finish()
 
 
-@dp.message_handler(commands=['me'])
+@dp.message_handler()
 async def start(message: Message):
     await UserForm.name.set()
+    await message.answer('Напишите, пожалуйста ваше имя.')
+
 
 @dp.message_handler(state=UserForm.name)
 async def process_name(message: Message, state: FSMContext):

@@ -9,7 +9,6 @@ class Survey(models.Model):
     slug = models.SlugField(max_length=255, unique=True, verbose_name='slug')
     name = models.CharField(max_length=50, verbose_name='название опроса')
     description = models.TextField(verbose_name='описание опроса')
-    url_survey = models.URLField(verbose_name='ссылка на опрос')
     active = models.BooleanField(verbose_name='активность опроса')
     counting = models.IntegerField(verbose_name='кол-во вопросов в опросе', **NULLABLE)
 
@@ -23,19 +22,9 @@ class Survey(models.Model):
 
 
 class Question(models.Model):
-    yes_or_no = 'yes_or_no'
-    one_of_some = 'one_of_some'
-    your_text = 'your_text'
-
-    TYPE_CHOICE = (
-        (yes_or_no, 'да или нет'),
-        (one_of_some, 'один из'),
-        (your_text, 'ваш текст'),
-    )
-    typy_q = models.CharField(max_length=25, choices=TYPE_CHOICE, verbose_name='тип вопроса')
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name='опрос')
     numb = models.IntegerField(verbose_name='номер вопроса')
-    count_marks = models.IntegerField(verbose_name='количество кнопок')
+    que_text = models.TextField(verbose_name='текст опроса', **NULLABLE)
 
     def __str__(self):
         return f'{self.survey}, {self.numb}'
@@ -43,18 +32,6 @@ class Question(models.Model):
     class Meta:
         verbose_name = 'вопрос'
         verbose_name_plural = 'вопросы'
-
-
-class QueText(models.Model):
-    que = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name='ссылаемый вопрос')
-    your_text = models.TextField(verbose_name='текст ответа')
-
-    def __str__(self):
-        return self.your_text
-
-    class Meta:
-        verbose_name = 'текст вопроса'
-        verbose_name_plural = 'текст вопросов'
 
 
 class Client(models.Model):
@@ -73,13 +50,19 @@ class Client(models.Model):
 
 
 class Answer(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name='клиент')
+    client = models.CharField(max_length=100, verbose_name='ТГ аккаунт')
     que = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name='вопрос')
     ans = models.TextField(verbose_name='ответ')
     date = models.DateTimeField(auto_now_add=True, verbose_name='время ответа')
 
     def __str__(self):
-        return f'{self.client.name}'
+        return f'{self.client}'
+
+    def save(self, *args, **kwargs):
+        # Изменяем поле client на значение из поля name модели Client
+        if isinstance(self.client, Client):  # Проверяем, что поле client содержит объект Client
+            self.client = self.client.acc_tg  # Устанавливаем значение поля name вместо объекта
+        super().save(*args, **kwargs)  # Вызов стандартного метода save
 
     class Meta:
         verbose_name = 'ответ'

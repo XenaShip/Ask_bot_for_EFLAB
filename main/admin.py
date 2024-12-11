@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Survey, Question, Answer, Client, QueText
+from .models import Survey, Question, Answer, Client
 
 
 @admin.register(Answer)
@@ -19,20 +19,14 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('typy_q', 'survey', 'numb',)
-    list_filter = ('typy_q', 'survey', 'numb',)
-    search_fields = ('typy_q', 'survey', 'numb',)
+    list_display = ('survey', 'numb',)
+    list_filter = ('survey', 'numb',)
+    search_fields = ('survey', 'numb',)
 
 
 @admin.register(Survey)
 class SurveyAdmin(admin.ModelAdmin):
-    list_display = ('slug', 'name', 'description', 'url_survey')
-    list_filter = ('slug', 'name', 'description', 'url_survey')
-    search_fields = ('slug', 'name', 'description', 'url_survey')
-
-
-@admin.register(QueText)
-class QueText(admin.ModelAdmin):
-    list_display = ('que', 'your_text')
-    list_filter = ('que', 'your_text')
-    search_fields = ('que', 'your_text')
+    prepopulated_fields = {"slug": ("name",)}
+    list_display = ('name', 'description')
+    list_filter = ('name', 'description')
+    search_fields = ('name', 'description')
