@@ -1,8 +1,9 @@
 from datetime import datetime
 import os
+from importlib.resources import files
 from os import getenv
 import django
-from aiogram.types import Message, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardRemove, InputFile
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -11,7 +12,8 @@ from rest_framework.status import is_client_error
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rest.settings')
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
-from main.models import Survey, Question, Client, Answer
+
+from main.models import Survey, Answer, Client, Question, WayToFile, Mark
 
 from aiogram.types import ReplyKeyboardMarkup
 
@@ -36,6 +38,20 @@ class QuestionForm(StatesGroup):
     waiting_for_answer = State()
 
 is_client_created = False
+
+
+def marking(que):
+    menu_marking = ReplyKeyboardMarkup(resize_keyboard=True)
+    if que.type_q == 'yes_or_no':
+        menu_marking.add('Да').add('Нет')
+    elif que.type_q == 'one_of_some':
+        marks = Mark.objects.filter(que=que)
+        for i in marks:
+            menu_marking.add(i.mark_text)
+    else:
+        return ReplyKeyboardRemove()
+    return menu_marking
+
 
 @dp.message_handler(commands=['start'])
 async def get_message(message: Message):
@@ -73,6 +89,8 @@ async def asking(message: Message, state: FSMContext):
 
 
 async def ask_survey(message: Message, state: FSMContext):
+    the_way = WayToFile.objects.first()
+    file_path = the_way.way
     user_data = await state.get_data()
     survey_id = user_data.get("survey_id")
     current_question = user_data.get("current_question")
@@ -81,7 +99,12 @@ async def ask_survey(message: Message, state: FSMContext):
     total_questions = now_survey.counting
 
     if current_question > total_questions:
-        await message.answer("Спасибо за участие в опросе!")
+        if os.path.exists(file_path):
+            file = InputFile(file_path)
+            await bot.send_document(chat_id=message.chat.id, document=file)
+        else:
+            await message.reply("Файл не найден. Пожалуйста, проверьте путь к файлу.")
+        await bot.send_message(chat_id=message.chat.id, text="Спасибо за участие в опросе!", reply_markup=ReplyKeyboardRemove())
         await state.finish()
         return
 
@@ -89,7 +112,7 @@ async def ask_survey(message: Message, state: FSMContext):
     if now_question:
         que_text = now_question.que_text
         if que_text:
-            await bot.send_message(chat_id=message.chat.id, text=que_text, reply_markup=ReplyKeyboardRemove())
+            await bot.send_message(chat_id=message.chat.id, text=que_text, reply_markup=marking(now_question))
             await QuestionForm.waiting_for_answer.set()
         else:
             await message.answer("Ошибка: текст вопроса отсутствует.")

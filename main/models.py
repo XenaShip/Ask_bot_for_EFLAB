@@ -1,5 +1,6 @@
 from tkinter.constants import CASCADE
 
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 NULLABLE = {'blank': True, 'null': True}
@@ -23,12 +24,19 @@ class Survey(models.Model):
 
 
 class Question(models.Model):
+    CHOICES = (
+        ('yes_or_no', 'yes_or_no'),
+        ('one_of_some', 'one_of_some'),
+        ('your_word', 'your_word')
+    )
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name='опрос')
     numb = models.IntegerField(verbose_name='номер вопроса')
     que_text = models.TextField(verbose_name='текст вопроса', **NULLABLE)
+    type_q = models.CharField(max_length=100, choices=CHOICES, verbose_name='тип вопроса', **NULLABLE)
+
 
     def __str__(self):
-        return f'{self.survey}, {self.numb}'
+        return f'{self.survey}, {self.numb}, {self.que_text}'
 
     class Meta:
         verbose_name = 'вопрос'
@@ -64,3 +72,27 @@ class Answer(models.Model):
     class Meta:
         verbose_name = 'ответ'
         verbose_name_plural = 'ответы'
+
+
+class WayToFile(models.Model):
+    way = models.TextField(verbose_name='путь')
+
+    def __str__(self):
+        return f'{self.way}'
+
+
+    class Meta:
+        verbose_name = 'путь к файлу'
+        verbose_name_plural = 'пути к файлам'
+
+
+class Mark(models.Model):
+    mark_text = models.TextField(verbose_name='текст кнопки')
+    que = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name='вопрос')
+
+    def __str__(self):
+        return f'{self.mark_text}'
+
+    class Meta:
+        verbose_name = 'кнопка'
+        verbose_name_plural = 'кнопки'
