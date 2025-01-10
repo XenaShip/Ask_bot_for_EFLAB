@@ -3,7 +3,7 @@ import os
 from importlib.resources import files
 from os import getenv
 import django
-from aiogram.types import Message, ReplyKeyboardRemove, InputFile
+from aiogram.types import Message, ReplyKeyboardRemove, InputFile, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -38,6 +38,8 @@ class QuestionForm(StatesGroup):
     waiting_for_answer = State()
 
 is_client_created = False
+is_client_end_asking = False
+dead_buttons = []
 
 
 def marking(que):
@@ -47,7 +49,9 @@ def marking(que):
     elif que.type_q == 'one_of_some':
         marks = Mark.objects.filter(que=que)
         for i in marks:
-            menu_marking.add(i.mark_text)
+            if i.mark_text not in dead_buttons:
+                menu_marking.add(i.mark_text)
+        menu_marking.add('Далее')
     else:
         return ReplyKeyboardRemove()
     return menu_marking
@@ -124,15 +128,24 @@ async def ask_survey(message: Message, state: FSMContext):
 
 @dp.message_handler(state=QuestionForm.waiting_for_answer)
 async def handle_answer(message: Message, state: FSMContext):
+    global is_client_end_asking
+    global dead_buttons
+    if message.text == 'Далее':
+        is_client_end_asking = True
     user_data = await state.get_data()
     survey_id = user_data.get("survey_id")
     current_question = user_data.get("current_question")
-
     now_client = Client.objects.get(acc_tg=message.from_user.username)
     now_survey = Survey.objects.get(id=survey_id)
     now_question = Question.objects.filter(survey=now_survey, numb=current_question).first()
-
-    if now_question:
+    if (is_client_end_asking and now_question) and now_question.type_q == 'one_of_some':
+        is_client_end_asking = False
+        await state.update_data(current_question=current_question + 1)
+        await ask_survey(message, state)
+    elif now_question:
+        # if message.text == 'Далее':
+         #   await bot.send_message(chat_id=message.chat.id, text="Пожалуйста, выберете один из вариантов")
+        #else:
         Answer.objects.create(
             client_tg_acc=message.from_user.username,
             que=now_question,
@@ -140,8 +153,15 @@ async def handle_answer(message: Message, state: FSMContext):
             date=datetime.now(),
             client_id=now_client
         )
-        await state.update_data(current_question=current_question + 1)
-        await ask_survey(message, state)
+        if now_question.type_q == 'one_of_some':
+            is_client_end_asking = False
+            dead_buttons.append(message.text)
+            await state.update_data(current_question=current_question)
+            await ask_survey(message, state)
+        else:
+            is_client_end_asking = False
+            await state.update_data(current_question=current_question + 1)
+            await ask_survey(message, state)
     else:
         await message.answer("Ошибка: текущий вопрос не найден.")
         await state.finish()
