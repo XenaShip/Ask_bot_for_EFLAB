@@ -132,6 +132,7 @@ async def handle_answer(message: Message, state: FSMContext):
     global dead_buttons
     if message.text == 'Далее':
         is_client_end_asking = True
+        dead_buttons = []
     user_data = await state.get_data()
     survey_id = user_data.get("survey_id")
     current_question = user_data.get("current_question")
@@ -169,8 +170,9 @@ async def handle_answer(message: Message, state: FSMContext):
 
 @dp.message_handler()
 async def start(message: Message):
-    await UserForm.name.set()
-    await message.answer('Напишите, пожалуйста ваше имя.')
+    if is_client_created:
+        await UserForm.name.set()
+        await message.answer('Напишите, пожалуйста ваше имя.')
 
 
 @dp.message_handler(state=UserForm.name)
