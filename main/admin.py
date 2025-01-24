@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Survey, Question, Answer, Client, WayToFile, Mark
+from .models import Survey, Question, Answer, Client, Mark
 
 
 @admin.register(Answer)
@@ -30,13 +30,6 @@ class SurveyAdmin(admin.ModelAdmin):
     list_display = ('name', 'description')
     list_filter = ('name', 'description')
     search_fields = ('name', 'description')
-
-
-@admin.register(WayToFile)
-class WayToFileAdmin(admin.ModelAdmin):
-    list_display = ('way',)
-    list_filter = ('way',)
-    search_fields = ('way',)
 
 
 @admin.register(Mark)

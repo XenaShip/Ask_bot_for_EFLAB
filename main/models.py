@@ -29,11 +29,19 @@ class Question(models.Model):
         ('one_of_some', 'one_of_some'),
         ('your_word', 'your_word')
     )
+    KINDS = (
+        ('photo', 'photo'),
+        ('video', 'video'),
+        ('audio', 'audio'),
+        ('document', 'document')
+    )
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name='опрос')
     numb = models.IntegerField(verbose_name='номер вопроса')
     que_text = models.TextField(verbose_name='текст вопроса', **NULLABLE)
     type_q = models.CharField(max_length=100, choices=CHOICES, verbose_name='тип вопроса', **NULLABLE)
-
+    wait_answer = models.BooleanField(verbose_name='ожидание ответа', **NULLABLE)
+    file = models.FileField(upload_to='documents/', verbose_name="Файл документа", **NULLABLE)
+    kind_file = models.CharField(max_length=100, choices=KINDS, verbose_name='тип вопроса', **NULLABLE)
 
     def __str__(self):
         return f'{self.survey}, {self.numb}, {self.que_text}'
@@ -72,18 +80,6 @@ class Answer(models.Model):
     class Meta:
         verbose_name = 'ответ'
         verbose_name_plural = 'ответы'
-
-
-class WayToFile(models.Model):
-    way = models.TextField(verbose_name='путь')
-
-    def __str__(self):
-        return f'{self.way}'
-
-
-    class Meta:
-        verbose_name = 'путь к файлу'
-        verbose_name_plural = 'пути к файлам'
 
 
 class Mark(models.Model):

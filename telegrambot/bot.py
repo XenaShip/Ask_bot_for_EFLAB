@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from importlib.resources import files
 from os import getenv
+from django.core.files import File
 import django
 from aiogram.types import Message, ReplyKeyboardRemove, InputFile, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -13,7 +14,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rest.settings')
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
-from main.models import Survey, Answer, Client, Question, WayToFile, Mark
+from main.models import Survey, Answer, Client, Question, Mark
 
 from aiogram.types import ReplyKeyboardMarkup
 
@@ -93,8 +94,6 @@ async def asking(message: Message, state: FSMContext):
 
 
 async def ask_survey(message: Message, state: FSMContext):
-    the_way = WayToFile.objects.first()
-    file_path = the_way.way
     user_data = await state.get_data()
     survey_id = user_data.get("survey_id")
     current_question = user_data.get("current_question")
@@ -103,11 +102,11 @@ async def ask_survey(message: Message, state: FSMContext):
     total_questions = now_survey.counting
 
     if current_question > total_questions:
-        if os.path.exists(file_path):
+        '''if os.path.exists(file_path):
             file = InputFile(file_path)
             await bot.send_document(chat_id=message.chat.id, document=file)
-        else:
-            await message.reply("Файл не найден. Пожалуйста, проверьте путь к файлу.")
+        # else:
+        #    await message.reply("Файл не найден. Пожалуйста, проверьте путь к файлу.")'''
         await bot.send_message(chat_id=message.chat.id, text="Спасибо за участие в опросе!", reply_markup=ReplyKeyboardRemove())
         await state.finish()
         return
@@ -116,8 +115,47 @@ async def ask_survey(message: Message, state: FSMContext):
     if now_question:
         que_text = now_question.que_text
         if que_text:
-            await bot.send_message(chat_id=message.chat.id, text=que_text, reply_markup=marking(now_question))
-            await QuestionForm.waiting_for_answer.set()
+            if now_question.file:
+                file_path = now_question.file.path
+                try:
+                    file = InputFile(file_path)
+                    if now_question.kind_file == 'photo':
+                        await bot.send_photo(
+                            chat_id=message.chat.id,
+                            photo=file,
+                            caption=que_text,
+                            reply_markup=marking(now_question)
+                        )
+                    elif now_question.kind_file == 'video':
+                        await bot.send_video(
+                            chat_id=message.chat.id,
+                            video=file,
+                            caption=que_text,
+                            reply_markup=marking(now_question)
+                        )
+                    elif now_question.kind_file == 'audio':
+                        await bot.send_audio(
+                            chat_id=message.chat.id,
+                            audio=file,
+                            caption=que_text,
+                            reply_markup=marking(now_question)
+                        )
+                    else:
+                        await bot.send_document(
+                            chat_id=message.chat.id,
+                            document=file,
+                            caption=que_text,
+                            reply_markup=marking(now_question)
+                        )
+                except FileNotFoundError:
+                    await bot.send_message(chat_id=message.chat.id, text="Документ не найдено.")
+            else:
+                await bot.send_message(chat_id=message.chat.id, text=que_text, reply_markup=marking(now_question))
+            if now_question.wait_answer:
+                await QuestionForm.waiting_for_answer.set()
+            else:
+                await state.update_data(current_question=current_question + 1)
+                await ask_survey(message, state)
         else:
             await message.answer("Ошибка: текст вопроса отсутствует.")
             await state.finish()
